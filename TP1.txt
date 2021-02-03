@@ -1,0 +1,113 @@
+Atenção:
+- Não edite este ficheiro em programas como Word e afins. Use exclusivamente um editor de texto simples. Em caso de dúvida, use o editor do Spyder.
+- Não altere a estrutura deste ficheiro. Preencha as respostas apenas nos espaços respectivos (a seguir à tag R#:)
+- Pode adicionar linhas no espaço para as respostas mas as respostas devem ser sucintas e directas.
+
+QUESTÔES:
+
+Q1: Considerando os dados fornecidos, explique a necessidade de standardizar os valores dos atributos.
+R1: Dada a discrepância relevante entre as dimensões dos valores dos 4 atributos, é necessário standardizar os mesmos de modo a levá-los a uma escala idêntica. Só assim se garante que os atributos contribuam de maneira equiparada para a análise de resultados, independente da escala.  
+
+No caso da Logistic Regression, é importante para o solver não ter que lidar com diferentes escalas, pois isto pode causar problemas. Além disso, neste trabalho usamos Logistic Regression com Regularização (tipo 'l2'), sendo necessária a standardização para todos os atributos serem penalizados de forma igual.
+
+No caso do nosso estimador Naive Bayes,a standardização é essencial para a utilização da mesma bandwidth para a estimação da densidade de probabilidade de cada atributo. A utilização de mesma bandwidth para valores em escala diferentes não faz sentido, tendo em conta que esta se relaciona intimamente com a variância. Valores de pequena escala terão naturalmente menor variância do que valores de grandes escala, pelo que é improvável serem bem adaptados com a mesma bandwidth. 
+
+Q2: Explique como calculou os parâmetros para standardização e como os usou no conjunto de teste.
+R2: Calculámos os parâmetros de standardização (vetor de médias e vetor de variâncias) utilizando somente o conjunto de treino. De seguida, utilizámos estes parâmetros na standardização do conjunto de treino e também do conjunto de teste, aplicando da fórmula (x-média)/variância em cada atributo. É importante esta prática em todos os classificadores deste trabalho, para o correto cálculo das previsões e posterior apuramento dos test errors, estimativas do true errors. Caso contrário, se utilizarmos valores do test set na standardização, toda esta a análise pode ficar enviesada. 
+
+Q3: Explique como calculou a probabilidade a priori de um exemplo pertencer a uma classe (a probabilidade antes de ter em conta os valores dos atributos do exemplo) na sua implementação do classificador Naïve Bayes. Pode incluir um trecho relevante do código se ajudar a explicar.
+R3: A probabilidade à priori de um exemplo pertencer a uma classe é a frequência relativa desta classe nos exemplos dos dados de treino. 
+
+Q4: Explique como o seu classificador Naïve Bayes prevê a classe a que um exemplo de teste pertence. Pode incluir um trecho relevante do código se ajudar a explicar.
+R4: O primeiro passo já foi descrito: calcular as probabilidades à priori de cada classe. 
+
+Continuamos e estimamos as densidades condicionais de cada feature dada cada classe, recorrendo a estimadores de densidade kernel,  para todas as 8 combinações de feature,classe. Guardamos estas para utilizar mais tarde nos dados de teste.
+
+De seguida, as distribuições estimadas anteriormente são usadas para calcular, para cada data point do conjunto de teste, as log-probabilidades estimadas do valor observado de cada atributo, dada cada classe, para cada uma das 8 combinações atributo-classe. Numa visão diferente, estas são as log-verossimilhanças de cada classe, dados os valores observados de cada atributo.
+
+Por fim, para cada data point do conjunto de teste, somamos as log-probabilidades dos valores observados de cada feature , dada cada classe, com as log-probabilidades à priori dessa mesma classe. Comparamos os dois valores obtidos, e a classe prevista será a que corresponde ao maior valor. 
+
+Assim se maximimiza a probabilidade conjunta estimada de cada par (valor observado dos atributos, previsão) e consequentemente, pelo teorema de Bayes, a probabilidade de cada previsão, dados os valores observados dos atributos. 
+
+Q5: Explique que efeito tem o parâmetro de bandwidth no seu classificador.
+R5: O estimador de densidade kernel é um método não paramético que adapta densidades aos dados de treino, para cada combinação feature/classe, quando treinamos o classificador. O processo deste método começa por definir uma distribuição (neste caso gaussiana) em torno de cada valor do atributo, com valor esperado=valor da feature e variância dependente da bandwidth. De seguida, somam-se todas estas distribuições em torno de cada valor observado divididas por uma constante de modo a obter-se uma densidade (o integral deve ser 1).
+
+O parâmeto de bandwidth está precisamente relacionado com a variância de cada distribuição gaussiana definida. Quanto maior for a bandwidth, maior será a variância e teremos curvas gaussianas mais largas. Analogamente, quanto menor for este parâmetro, menor será a variância e teremos curvas gaussianas mais finas. 
+
+Quando fazemos a soma das curvas e respetiva standardização, é então natural que obtenhamos distribuições mais irregulares e adaptadas aos dados de treino para valores baixos da bandwidth e distribuições mais suaves e menos adaptadas aos dados de treino para valores altos do parâmetro, à semelhança do que acontece quando variamos os graus dos polinómios nos problemas de regressão.
+
+Deste modo, o valor da bandwidth varia no sentido inverso ao training error. Todavia, escolher valores muito baixos para este parâmetro não será uma boa ideia, pois teremos um classificador muito especializado nos pormenores dos dados de treino, que consegue grandes resultados neste conjunto, mas depois não consegue generalizar para novos dados, estando presente uma situação de overfitting. 
+
+Por outro lado, para valores muito altos do parâmetro, o classificador não é capaz de aprender com os dados de treino e valores dos training e test/validation errors serão ambos altos pois, com distribuições tão suaves e uniformes, não é possível estabelecer relações claras entre os valores dos atributos e as classes. 
+
+O ideal será uma solução intermédia obtida através de cross-validation.
+
+
+Q6: Explique que efeito tem o parâmetro C no classificador Logistic Regression.
+R6: O parâmetro C, mais precisamente 1/C, pondera a penalização quadrática dos coeficientes do hiperplano que separa as classes. Deste modo, um valor baixo de C vai penalizar bastante estes coeficientes, forçando-os a ser menores, pelo que a função logística terá um declive mais suave e o classificador especializa-se menos nos dados de treino, não sendo tão sensível a outliers, por exemplo. 
+
+Deste modo, baixar os valor de C é uma solução para o problema de overfitting, nomeadamente quando existe expansão polimonial das features, que permite à Logistic Regression curvar-se e adaptar-se aos pormenores dos dados de treino. Todavia, um valor demasiado baixo de C pode causar underfiting: os coeficientes são de tal forma penalizados que o classificador não é capaz de se adaptar aos dados de treino e estabelecer relações claras entre os valores das features e as classes, resultando em valores dos training e test/validation errors altos.
+
+No nosso output é observável o underfitting para valores baixos de C, todavia, com valores altos de C não se origina overfitting. Isto pois o classificador é linear e nunca se adapta em demasia aos detalhes dados de treino, fazendo com que a regularização não tenha grandes efeitos. Na verdade, desde C=1 até C=10^12, é residual a diferença de performance das diferentes hipóteses. 
+
+Q7: Explique como determinou o melhor parâmetro de bandwidth e C para o seu classificador e o classificador Logistic Regression. Pode incluir um trecho relevante do código se ajudar a explicar.
+R7: Ambos os parâmetros foram obtidos através de cross-validation. Esta permite escolher a hipótese com menor erro de validação fazendo a média das estimativas do mesmo obtidas em várias repetições, para diferentes subconjuntos dos dados de treino.
+
+Começamos por dividir os dados de treino em 5 folds disjuntas. De seguida, realizamos o seguinte processo, em ambos os classificadores:
+
+-Para cada valor do parâmetro a testar, treinamos o modelo em 4 das 5 folds,validando o mesmo na fold que ficou de fora, e repetimos este processo para todas as folds (5x portanto). 
+-Em cada uma das 5 repetições, calculamos a estimativa do erro de validação. No final, calculamos a média entre as 5 estimativas.
+-O valor ótimo do parâmetro vai ser o que tiver um menor valor da média descrita acima.
+
+Usamos o Brier Score como estimativa do erro para a cross-validation da Logistic Regression, pois o gráfico parece mais interessante do que quando usada 1-acurracy. Para o nosso classificador Naive Bayes usamos 1- acurracy, o que é fácil de calcular pois temos uma função que faz as previsões, já explicada anteriormente.  
+
+
+Q8: Explique como obteve a melhor hipótese para cada um dos classificadores depois de optimizados os parâmetros.
+R8: Depois de optimizados os parâmetros, treinamos o modelo com a totalidade dos dados de treino, usando os parâmetros ótimos obtidos. Assim obtemos a melhor hipótese.
+
+No caso do KDE Naive Bayes, isto significa estimar as densidades de probabilidade utilizando bandwidth ótima e a totalidade dos dados de treino, bem como estimar as probabilidades à priori, usando também totalidade dos dados de treino.
+
+No caso da Logistic Regression, basta fazer o ajustamento de um objecto LogisticRegression à totalidade dos dados de treino usando o parâmetro C ótimo.
+
+
+Q9: Mostre os melhores valores dos parâmetros optimizados, a estimativa do erro verdadeiro de cada uma das hipóteses que obteve (o seu classificador e os dois fornecidos pela biblioteca), os intervalos do número esperado de erros dados pelo teste normal aproximado e os valores dos testes de McNemar e discuta o que pode concluir daí.
+R9: 
+Os parâmetros otimizados: optimal log(c):2 , optimal bandwidth:0.16
+
+As estimativas do erro verdadeiro: LR: 0.10685805422647532  KDE: 0.11244019138755978  GAUSSIAN: 0.12998405103668265
+
+Os intervalos do número esperado de erros:
+
+Logistic Regression
+
+interval: (112.55783105069828, 155.44216894930173)
+
+KDE Naive Bayes
+
+interval: (119.0737459590576, 162.92625404094238)
+
+GAUSSIAN Naive Bayes
+
+interval: (139.65932128376278, 186.34067871623722)
+
+
+Os valores do teste de McNemar:
+
+Naive Bayes with KDE vs Gaussian Naive Bayes: 
+
+e01: 39 e10: 17 test: 7.875
+
+Naive Bayes with KDE vs LR: 
+
+e01: 33 e10: 40 test: 0.4931506849315068
+
+Gaussian Naive Bayes vs LR: 
+
+e01: 17 e10: 46 test: 12.444444444444445
+
+
+No teste normal aproximado, verificamos que todos os intervalos têm interseção não vazia, pelo que não podemos excluir, para nenhum par de classificadores, a hipótese destes terem o mesmo erro verdadeiro.
+
+Por outro lado, pelo teste de Mcnemar, não excluímos, com 95% de confiança, a semelhança de performance nos classificadores da logistic regression e do Naive Bayes. Todavia, com o mesmo grau de confiança, excluímos a hipótese de que o Gaussian NB tem a mesma performance dos demais.
+
+Finalmente, podemos concluir que o KDE Naive Bayes e Logistic Regression têm performances bastante semelhantes, quando testados neste conjunto de dados. Não é possível dizer com confiança qual o melhor destes dois para este problema de classificação,com base nos resultados obtidos, embora se verifique ligeira vantagem da Logistic Regression no test error. Por outro lado, embora os testes não se demonstrem inequívocos, é algo provável que o Gaussian Naive Bayes tenha pior performance. Não podemos no entanto afirmar isto com alto nível de confiança, devido aos resultados do teste normal aproximado.
